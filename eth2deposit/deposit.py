@@ -42,6 +42,21 @@ def generate_mnemonic(language: str, words_path: str) -> str:
     return mnemonic
 
 
+def read_mnemonic() -> str:
+    mnemonic = 'foo'
+    test_mnemonic = 'bar'
+    while mnemonic != test_mnemonic:
+        click.clear()
+        mnemonic = click.prompt('Please type your mnemonic (separated by spaces)\n\n')  # noqa: E501
+        mnemonic = mnemonic.lower()
+
+        click.clear()
+        test_mnemonic = click.prompt('Please repeat your mnemonic (separated by spaces)\n\n')  # noqa: E501
+        test_mnemonic = test_mnemonic.lower()
+    click.clear()
+    return mnemonic
+
+
 def check_python_version() -> None:
     '''
     Checks that the python version running is sufficient and exits if not.
@@ -57,6 +72,11 @@ def check_python_version() -> None:
     prompt='Please choose how many validators you wish to run',
     required=True,
     type=int,
+)
+@click.option(
+    '--reuse_mnemonic',
+    type=click.BOOL,
+    default=False,
 )
 @click.option(
     '--mnemonic_language',
@@ -76,9 +96,13 @@ def check_python_version() -> None:
     default=MAINNET,
 )
 @click.password_option(prompt='Type the password that secures your validator keystore(s)')
-def main(num_validators: int, mnemonic_language: str, folder: str, chain: str, password: str) -> None:
+def main(num_validators: int, reuse_mnemonic : bool, mnemonic_language: str, folder: str, chain: str,
+         password: str) -> None:
     check_python_version()
-    mnemonic = generate_mnemonic(mnemonic_language, WORD_LISTS_PATH)
+    if reuse_mnemonic:
+        mnemonic = read_mnemonic()
+    else:
+        mnemonic = generate_mnemonic(mnemonic_language, WORD_LISTS_PATH)
     amounts = [MAX_DEPOSIT_AMOUNT] * num_validators
     folder = os.path.join(folder, DEFAULT_VALIDATOR_KEYS_FOLDER_NAME)
     setting = get_setting(chain)
