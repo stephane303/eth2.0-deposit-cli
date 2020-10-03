@@ -9,6 +9,7 @@ from eth2deposit.exceptions import ValidationError
 from eth2deposit.key_handling.key_derivation.mnemonic import (
     get_languages,
     get_mnemonic,
+    _get_word_list,
 )
 from eth2deposit.utils.validation import verify_deposit_data_json
 from eth2deposit.utils.constants import (
@@ -42,13 +43,25 @@ def generate_mnemonic(language: str, words_path: str) -> str:
     return mnemonic
 
 
-def read_mnemonic() -> str:
+def read_mnemonic(language: str, words_path: str) -> str:
+    word_list = [w.strip() for w in _get_word_list(language, words_path)]
     mnemonic = 'foo'
     test_mnemonic = 'bar'
     while mnemonic != test_mnemonic:
         click.clear()
         mnemonic = click.prompt('Please type your mnemonic (separated by spaces)\n\n')  # noqa: E501
         mnemonic = mnemonic.lower()
+
+        invalid_words = set([w for w in mnemonic.split(' ') if w not in word_list])
+        if len(invalid_words) > 0:
+            click.echo('The entered seed phrase contains the following invalid words: {}'.format(
+                ', '.join(sorted(invalid_words))))
+            click.pause('Press any key to try again.')
+            continue
+
+        if len(mnemonic.split(' ')) != 24:
+            click.pause('The seed phrase must contain exactly 24 words. Press any key to try again.')
+            continue
 
         click.clear()
         test_mnemonic = click.prompt('Please repeat your mnemonic (separated by spaces)\n\n')  # noqa: E501
@@ -75,7 +88,7 @@ def check_python_version() -> None:
 )
 @click.option(
     '--reuse_mnemonic',
-    type=click.BOOL,
+    type=bool,
     default=False,
 )
 @click.option(
@@ -100,7 +113,7 @@ def main(num_validators: int, reuse_mnemonic : bool, mnemonic_language: str, fol
          password: str) -> None:
     check_python_version()
     if reuse_mnemonic:
-        mnemonic = read_mnemonic()
+        mnemonic = read_mnemonic(mnemonic_language, WORD_LISTS_PATH)
     else:
         mnemonic = generate_mnemonic(mnemonic_language, WORD_LISTS_PATH)
     amounts = [MAX_DEPOSIT_AMOUNT] * num_validators
